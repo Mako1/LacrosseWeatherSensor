@@ -20,8 +20,15 @@ def cbf(GPIO, level, tick):
    global start
    global end
    global bitarr
+   global bitarrs
    global diffarr
+   global passNum
    
+   try:
+       foo = ltdEndCount
+   except NameError:
+       ltdEndCount = False
+       
    try:
        foo = start
    except NameError:
@@ -33,14 +40,23 @@ def cbf(GPIO, level, tick):
        bitarr = []
        
    try:
+       foo = bitarrs
+   except NameError:
+       bitarrs = []
+       
+   try:
        foo = diffarr
    except NameError:
        diffarr = []
    
+   try:
+       foo = passNum
+   except NameError:
+       passNum = 0
+       
    if last[GPIO] is not None:
       diff = pigpio.tickDiff(last[GPIO], tick)
-      #print("G={} l={} d={}".format(GPIO, level, diff))
-      diffarr.append(diff)
+      print("G={} l={} d={}".format(GPIO, level, diff))
       
       if (not start):
           if (diff > 800 and diff < 1000):
@@ -51,26 +67,35 @@ def cbf(GPIO, level, tick):
           if (ltdcount == 8):
               start = True
               ltdEndCount = 0
+              passNum += 1
               
       elif (start):
           if (diff > 800 and diff < 1000):
               ltdEndCount += 1
-          
-          if (ltdEndCount == 4):
-              print("diffarr = {}".format("".join(diffarr)))
-              print("bitarr = {}".format(bitarr))
+              
+          if (ltdEndCount == 0):
+              diffarr.append(str(diff))
+              if (level == 0 and diff > 350):
+                  bitarr.append("1")
+              elif (level == 0 and diff <= 350):
+                  bitarr.append("0")
+                     
+          if (ltdEndCount == 8):
+              print("diffarr = {}".format(", ".join(diffarr)))
+              print("bitarr = {}".format("".join(bitarr)))
+              bitarrs.append(bitarr)
               start = False
+              
+              if (passNum == 4):
+                  print("bitarrs = {}".format("-".join(bitarrs)))
+                  bitarrs = []
+                  
               bitarr = []
               diffarr = []
               ltdEndCount = 0
               ltdcount = 0
+              passNum = 0
               
-          if (ltdEndCount == 0):
-              if (level == 0 and diff > 400):
-                  bitarr.append("1")
-              elif (level == 0 and diff < 300):
-                  bitarr.append("0")
-                     
    last[GPIO] = tick
    
 pi = pigpio.pi()
