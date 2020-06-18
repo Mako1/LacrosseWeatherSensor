@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from collections import Counter
+from bitstring import ConstBitStream
 
 import sys
 import time
@@ -71,18 +72,20 @@ def cbf(GPIO, level, tick):
                   print("{} passes complete".format(passNum))
                   isEnd = False
                   passNum = 0
-                  print("Most common bit array = {}".format(findMostCommon(bitarrs)))
+                  mostCommon = findMostCommon(bitarrs)
+                  print("Most common bit array = {}".format(mostCommon))
+                  parseBitArray(mostCommon[0][0])
                   bitarrs = []
                   
-              if (passNum == 11 and ltdcount == 3):
+              if (passNum >= 10 and ltdcount == 3):
                   isEnd = True
                         
               ltdcount = 0
               diffarr = []
               
-          if (ltdcount == 8):
+          if (ltdcount == 8): #start
               passNum += 1
-              print("Pass = {}".format(passNum))
+              #print("Pass = {}".format(passNum))
               ltdcount = 0
               start = True
       
@@ -98,8 +101,8 @@ def cbf(GPIO, level, tick):
           if (pulses == 80):
               start = False
               pulses = 0
-              print("diffarr = {}".format(", ".join(diffarr)))
-              print("bitarr = {}".format("".join(bitarr)))
+              #print("diffarr = {}".format(", ".join(diffarr)))
+              #print("bitarr = {}".format("".join(bitarr)))
               bitarrs.append("".join(bitarr))
               bitarr = []
               diffarr = []
@@ -108,11 +111,17 @@ def cbf(GPIO, level, tick):
 
 def findMostCommon(strList):
     counter = Counter(strList)
-    
     mostCommon = counter.most_common(1)
-    
     return mostCommon
 
+def parseBitArray(bitArray):
+    bits = ConstBitStream(bin=bitArray)
+    bits.pos = 12  
+    t = bits.read('int:12')
+    temp = (t/10-50) * 1.8 + 32
+    humi = bits.read('int:8')
+    print("temp = {}, humi = {}".format(round(temp,1), humi))
+    
 pi = pigpio.pi()
 
 if not pi.connected:
