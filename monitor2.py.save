@@ -6,13 +6,6 @@ import sys
 import time
 import pigpio
 
-BAD_READ = "0000000000000000000000000000000000000000"
-PREEMBLE_LOW = 600
-PREEMBLE_HIGH = 1000
-BIT_ONE_HIGH = 350
-BIT_ZERO_HIGH = 350
-PULSES = 80
-
 last = [None]*32
 cb = []
 
@@ -71,14 +64,14 @@ def cbf(GPIO, level, tick):
       #print("G={} l={} d={}".format(GPIO, level, diff))
       
       if (not start):
-          if (diff > PREEMBLE_LOW and diff < PREEMBLE_HIGH):
+          if (diff > 600 and diff < 1000):
               ltdcount += 1
               diffarr.append(str(diff))
           else:
               if (isEnd):
                   print("{} passes complete".format(passNum))
                   isEnd = False
-                  passNum = 0               
+                  passNum = 0
                   mostCommon = findMostCommon(bitarrs)
                   print("Most common bit array = {}".format(mostCommon))
                   parseBitArray(mostCommon[0][0])
@@ -86,10 +79,9 @@ def cbf(GPIO, level, tick):
                   
               if (passNum >= 10 and ltdcount == 3):
                   isEnd = True
-              
+                        
               ltdcount = 0
               diffarr = []
-              #passNum = 0
               
           if (ltdcount == 8): #start
               passNum += 1
@@ -101,12 +93,12 @@ def cbf(GPIO, level, tick):
           pulses += 1
           diffarr.append(str(diff))
           
-          if (level == 0 and diff >= BIT_ONE_HIGH):
+          if (level == 0 and diff > 350):
               bitarr.append("1")
-          elif (level == 0 and diff < BIT_ZERO_HIGH):
+          elif (level == 0 and diff <= 350):
               bitarr.append("0")
                   
-          if (pulses == PULSES):
+          if (pulses == 80):
               start = False
               pulses = 0
               #print("diffarr = {}".format(", ".join(diffarr)))
@@ -118,7 +110,8 @@ def cbf(GPIO, level, tick):
    last[GPIO] = tick
 
 def findMostCommon(strList):
-    counter = Counter([s for s in strList if s != BAD_READ])
+    counter = Counter(strList)
+	
     mostCommon = counter.most_common(1)
     return mostCommon
 
@@ -128,14 +121,8 @@ def parseBitArray(bitArray):
     t = bits.read('int:12')
     temp = (t/10-50) * 1.8 + 32
     humi = bits.read('int:8')
-    print("temp = {}, humi = {}, real feel = {}".format(round(temp,1), humi, round(real_feel(temp, humi),1)))
-
-def real_feel(T, rh):
-    if (T >= 80):
-        return -42.379 + (2.04901523 * T) + (10.14333127 * rh) - (0.22475541 * T * rh) - (6.83783 * 10**-3 * T**2) - (5.481717 * 10**-2 * rh**2) + (1.22874 * 10**-3 * T**2 * rh) + (8.5282 * 10**-4 * T * rh**2) - (1.99 * 10**-6 * T**2 * rh**2) 
-    else:
-        return 0.5 * (T + 61.0 + ((T-68.0)*1.2) + (rh*0.094)) 
-
+    print("temp = {}, humi = {}".format(round(temp,1), humi))
+    
 pi = pigpio.pi()
 
 if not pi.connected:
