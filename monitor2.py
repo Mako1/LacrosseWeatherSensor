@@ -5,6 +5,7 @@ from bitstring import ConstBitStream
 import sys
 import time
 import pigpio
+import sqlite3
 
 BAD_READ = "0000000000000000000000000000000000000000"
 PREEMBLE_LOW = 600
@@ -126,9 +127,11 @@ def parseBitArray(bitArray):
     bits = ConstBitStream(bin=bitArray)
     bits.pos = 12  
     t = bits.read('int:12')
-    temp = (t/10-50) * 1.8 + 32
+    temp = round((t/10-50) * 1.8 + 32,1)
     humi = bits.read('int:8')
-    print("temp = {}, humi = {}, real feel = {}".format(round(temp,1), humi, round(real_feel(temp, humi),1)))
+    realFeel = round(real_feel(temp, humi),1)
+    print("temp = {}, humi = {}, real feel = {}".format(temp, humi, realFeel))
+    insert_to_db(temp, humi, realFeel)
 
 def real_feel(T, rh):
     if (T >= 80):
@@ -136,7 +139,22 @@ def real_feel(T, rh):
     else:
         return 0.5 * (T + 61.0 + ((T-68.0)*1.2) + (rh*0.094)) 
 
+def clear_db():
+    conn = sqlite3.connect('/home/pi/Database/WeatherStation/WeatherStation.db')
+    conn.execute("DELETE FROM OUTDOOR_SENSOR")
+    conn.commit()
+    conn.close()
+
+def insert_to_db(temp, humi, realFeel):
+    conn = sqlite3.connect('/home/pi/Database/WeatherStation/WeatherStation.db')
+    conn.execute("INSERT INTO OUTDOOR_SENSOR (TEMP, HUMIDITY, REAL_FEEL, CREATE_DATE) \
+      VALUES (" + str(temp) + ", " + str(humi) + ", " + str(realFeel) + ", datetime('now'))");
+    conn.commit()
+    conn.close()
+
 pi = pigpio.pi()
+
+clear_db()
 
 if not pi.connected:
    exit()
